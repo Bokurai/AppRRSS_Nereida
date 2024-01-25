@@ -39,4 +39,9 @@
         android:name="com.example.p10_nere.MediaFragment"
         android:label="fragment_media"
         tools:layout="@layout/fragment_media" />
+    <fragment
+        android:id="@+id/favoritesFragment"
+        android:name="com.example.p10_nere.FavoritesFragment"
+        android:label="fragment_favorites"
+        tools:layout="@layout/fragment_favorites" />
 </navigation>
