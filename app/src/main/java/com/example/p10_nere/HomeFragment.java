@@ -5,6 +5,7 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.RecyclerView;
@@ -23,10 +24,16 @@ import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.util.Calendar;
+
 
 public class HomeFragment extends Fragment {
 
     NavController navController;
+
+    public AppViewModel appViewModel;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -41,6 +48,9 @@ public class HomeFragment extends Fragment {
 
         navController = Navigation.findNavController(view);
 
+        appViewModel = new
+                ViewModelProvider(requireActivity()).get(AppViewModel.class);
+
         view.findViewById(R.id.gotoNewPostFragmentButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -50,7 +60,7 @@ public class HomeFragment extends Fragment {
 
         RecyclerView postsRecyclerView = view.findViewById(R.id.postsRecyclerView);
 
-        Query query = FirebaseFirestore.getInstance().collection("posts").limit(50);
+        Query query = FirebaseFirestore.getInstance().collection("posts").orderBy("timeStamp", Query.Direction.DESCENDING).limit(50);
 
         FirestoreRecyclerOptions<Post> options = new FirestoreRecyclerOptions.Builder<Post>()
                 .setQuery(query, Post.class)
@@ -88,19 +98,48 @@ public class HomeFragment extends Fragment {
                         .update("likes."+uid, post.likes.containsKey(uid) ?
                                 FieldValue.delete() : true);
             });
+
+            // Miniatura de media
+            if (post.mediaUrl != null) {
+                holder.mediaImageView.setVisibility(View.VISIBLE);
+                if ("audio".equals(post.mediaType)) {
+                    Glide.with(requireView()).load(R.drawable.audio).centerCrop().into(holder.mediaImageView);
+                } else {
+                    Glide.with(requireView()).load(post.mediaUrl).centerCrop().into(holder.mediaImageView);
+                }
+                holder.mediaImageView.setOnClickListener(view -> {
+                    appViewModel.postSeleccionado.setValue(post);
+                    navController.navigate(R.id.mediaFragment);
+                });
+            } else {
+                holder.mediaImageView.setVisibility(View.GONE);
+            }
+
+            //fecha y hora
+
+            SimpleDateFormat format = new SimpleDateFormat("HH:mm dd/MM/yyyy");
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTimeInMillis(post.timeStamp);
+
+            holder.timeTextView.setText(format.format(calendar.getTime()));
         }
 
         class PostViewHolder extends RecyclerView.ViewHolder {
-            ImageView authorPhotoImageView, likeImageView;
-            TextView authorTextView, contentTextView, numLikesTextView;
+            ImageView authorPhotoImageView, likeImageView, mediaImageView;
+            TextView authorTextView, contentTextView, numLikesTextView, timeTextView;
             PostViewHolder(@NonNull View itemView) {
                 super(itemView);
                 authorPhotoImageView =
                         itemView.findViewById(R.id.photoImageView);
                 likeImageView = itemView.findViewById(R.id.likeImageView);
+                mediaImageView = itemView.findViewById(R.id.mediaImage);
                 authorTextView = itemView.findViewById(R.id.authorTextView);
-                contentTextView = itemView.findViewById(R.id.contentTextView);
-                numLikesTextView = itemView.findViewById(R.id.numLikesTextView);
+                contentTextView =
+                        itemView.findViewById(R.id.contentTextView);
+                numLikesTextView =
+                        itemView.findViewById(R.id.numLikesTextView);
+                timeTextView =
+                        itemView.findViewById(R.id.timeTextView);
             }
         }
     }
