@@ -99,6 +99,7 @@ public class HomeFragment extends Fragment {
                                 FieldValue.delete() : true);
             });
 
+
             // Miniatura de media
             if (post.mediaUrl != null) {
                 holder.mediaImageView.setVisibility(View.VISIBLE);

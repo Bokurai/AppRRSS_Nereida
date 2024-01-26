@@ -14,6 +14,8 @@ public class Post {
     public long timeStamp;
 
     public Map<String, Boolean> likes = new HashMap<>();
+
+    public Map<String, Boolean> favorites = new HashMap<>();
     // Constructor vacio requerido por Firestore
     public Post() {}
     public Post(String uid, String author, String authorPhotoUrl, String

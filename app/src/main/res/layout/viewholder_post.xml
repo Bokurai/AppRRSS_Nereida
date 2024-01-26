@@ -67,6 +67,13 @@
                     android:layout_marginStart="4dp"
                     android:layout_gravity="center_vertical"
                     android:text="200K"/>
+                <ImageView
+                    android:id="@+id/favoritesImageView"
+                    app:srcCompat="@drawable/star_post"
+                    android:layout_marginStart="10dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"/>
             </LinearLayout>
         </LinearLayout>
         <TextView
