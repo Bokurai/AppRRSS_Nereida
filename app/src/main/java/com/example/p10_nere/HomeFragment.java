@@ -99,6 +99,17 @@ public class HomeFragment extends Fragment {
                                 FieldValue.delete() : true);
             });
 
+            //Posts favoritos
+            if(post.favorites.containsKey(uid))
+                holder.favoritesImageView.setImageResource(R.drawable.star_post2);
+            else
+                holder.favoritesImageView.setImageResource(R.drawable.star_post);
+            holder.favoritesImageView.setOnClickListener(view -> {
+                FirebaseFirestore.getInstance().collection("posts")
+                        .document(postKey)
+                        .update("favorites."+uid, post.favorites.containsKey(uid) ?
+                                FieldValue.delete() : true);
+            });
 
             // Miniatura de media
             if (post.mediaUrl != null) {
@@ -123,10 +134,12 @@ public class HomeFragment extends Fragment {
             calendar.setTimeInMillis(post.timeStamp);
 
             holder.timeTextView.setText(format.format(calendar.getTime()));
+
+
         }
 
         class PostViewHolder extends RecyclerView.ViewHolder {
-            ImageView authorPhotoImageView, likeImageView, mediaImageView;
+            ImageView authorPhotoImageView, likeImageView, mediaImageView, favoritesImageView;
             TextView authorTextView, contentTextView, numLikesTextView, timeTextView;
             PostViewHolder(@NonNull View itemView) {
                 super(itemView);
@@ -141,6 +154,7 @@ public class HomeFragment extends Fragment {
                         itemView.findViewById(R.id.numLikesTextView);
                 timeTextView =
                         itemView.findViewById(R.id.timeTextView);
+                favoritesImageView = itemView.findViewById(R.id.favoritesImageView);
             }
         }
     }
