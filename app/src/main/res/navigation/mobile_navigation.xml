@@ -43,5 +43,5 @@
         android:id="@+id/favoritesFragment"
         android:name="com.example.p10_nere.FavoritesFragment"
         android:label="fragment_favorites"
-        tools:layout="@layout/fragment_favorites" />
+        tools:layout="@layout/fragment_home" />
 </navigation>
