@@ -109,10 +109,10 @@ public class HomeFragment extends Fragment {
             else
                 holder.favoritesImageView.setImageResource(R.drawable.star_post);
             holder.favoritesImageView.setOnClickListener(view -> {
-                FirebaseFirestore.getInstance().collection("posts")
-                        .document(postKey)
+                FirebaseFirestore.getInstance().collection("favorites_"+uid).add(post);
+                        /*.document(postKey)
                         .update("favorites."+uid, post.favorites.containsKey(uid) ?
-                                FieldValue.delete() : true);
+                                FieldValue.delete() : true);*/
             });
 
             // Miniatura de media

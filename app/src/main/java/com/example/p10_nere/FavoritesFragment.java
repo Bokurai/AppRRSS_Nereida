@@ -18,6 +18,7 @@ public class FavoritesFragment extends HomeFragment {
     Query query = getQuery();
 
     Query getQuery(){
-        return FirebaseFirestore.getInstance().collection("favorites").orderBy("timeStamp", Query.Direction.DESCENDING).limit(50);
+        return FirebaseFirestore.getInstance().collectionGroup("posts").whereEqualTo("favorites", true).limit(50);
     }
+
 }

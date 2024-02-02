@@ -15,6 +15,7 @@ import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
 
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -67,7 +68,7 @@ public class newPostFragment extends Fragment {
 
         publishButton = view.findViewById(R.id.publishButton);
         postConentEditText = view.findViewById(R.id.postContentEditText);
-
+        navController = Navigation.findNavController(view);
         publishButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
