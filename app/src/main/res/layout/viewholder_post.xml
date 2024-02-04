@@ -83,5 +83,11 @@
             android:layout_height="wrap_content"
             android:gravity="right"
             android:text="HH:MM DD/MM/AAAA"/>
+        <ImageView
+            android:id="@+id/deleteImageView"
+            app:srcCompat="@drawable/remove"
+            android:layout_gravity="right|bottom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
     </LinearLayout>
 </androidx.cardview.widget.CardView>

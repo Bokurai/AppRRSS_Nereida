@@ -22,7 +22,8 @@ public class ProfileFragment extends Fragment {
     ImageView photoImageView;
     TextView displayNameTextView, emailTextView;
 
-    public ProfileFragment() {}
+    public ProfileFragment() {
+    }
 
 
     @Override
@@ -40,11 +41,19 @@ public class ProfileFragment extends Fragment {
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
 
-        if(user != null){
+        if (user != null) {
             displayNameTextView.setText(user.getDisplayName());
             emailTextView.setText(user.getEmail());
 
-            Glide.with(requireView()).load(user.getPhotoUrl()).into(photoImageView);
+            if (user.getPhotoUrl() != null) {
+                Glide.with(requireView()).load(user.getPhotoUrl()).into(photoImageView);
+            } else {
+
+                // Si no tiene foto, carga la imagen predeterminada
+                Glide.with(requireView()).load(R.drawable.user).into(photoImageView);
+            }
+
         }
     }
+
 }

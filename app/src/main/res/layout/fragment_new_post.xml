@@ -12,6 +12,7 @@
             android:id="@+id/publishButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:backgroundTint="#9A7DB7"
             android:text="Publish"
             android:layout_gravity="end"/>
         <EditText

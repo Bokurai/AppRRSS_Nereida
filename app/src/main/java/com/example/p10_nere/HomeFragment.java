@@ -1,5 +1,7 @@
 package com.example.p10_nere;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -10,6 +12,7 @@ import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,7 +22,12 @@ import android.widget.TextView;
 import com.bumptech.glide.Glide;
 import com.firebase.ui.firestore.FirestoreRecyclerAdapter;
 import com.firebase.ui.firestore.FirestoreRecyclerOptions;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
@@ -27,6 +35,8 @@ import com.google.firebase.firestore.Query;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Map;
 
 
 public class HomeFragment extends Fragment {
@@ -38,7 +48,6 @@ public class HomeFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
         return inflater.inflate(R.layout.fragment_home, container, false);
     }
 
@@ -70,12 +79,15 @@ public class HomeFragment extends Fragment {
         postsRecyclerView.setAdapter(new PostsAdapter(options));
     }
 
-    Query getQuery(){
+    Query getQuery() {
         return FirebaseFirestore.getInstance().collection("posts").orderBy("timeStamp", Query.Direction.DESCENDING).limit(50);
     }
 
     class PostsAdapter extends FirestoreRecyclerAdapter<Post, PostsAdapter.PostViewHolder> {
-        public PostsAdapter(@NonNull FirestoreRecyclerOptions<Post> options) {super(options);}
+
+        public PostsAdapter(@NonNull FirestoreRecyclerOptions<Post> options) {
+            super(options);
+        }
 
         @NonNull
         @Override
@@ -89,33 +101,56 @@ public class HomeFragment extends Fragment {
             holder.authorTextView.setText(post.author);
             holder.contentTextView.setText(post.content);
 
-            final String postKey = getSnapshots().getSnapshot(position).getId();
-            final String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-            if(post.likes.containsKey(uid))
+            String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+            //botón likes
+            if (post.likes.containsKey(uid)) {
                 holder.likeImageView.setImageResource(R.drawable.like_on);
-            else
+            } else {
                 holder.likeImageView.setImageResource(R.drawable.like_off);
+            }
             holder.numLikesTextView.setText(String.valueOf(post.likes.size()));
             holder.likeImageView.setOnClickListener(view -> {
                 FirebaseFirestore.getInstance().collection("posts")
-                        .document(postKey)
-                        .update("likes."+uid, post.likes.containsKey(uid) ?
+                        .document(getSnapshots().getSnapshot(position).getId())
+                        .update("likes." + uid, post.likes.containsKey(uid) ?
                                 FieldValue.delete() : true);
             });
 
-            //Posts favoritos
-            if(post.favorites.containsKey(uid))
-                holder.favoritesImageView.setImageResource(R.drawable.star_post2);
-            else
-                holder.favoritesImageView.setImageResource(R.drawable.star_post);
+            // botón favoritos
             holder.favoritesImageView.setOnClickListener(view -> {
-                FirebaseFirestore.getInstance().collection("favorites_"+uid).add(post);
-                        /*.document(postKey)
-                        .update("favorites."+uid, post.favorites.containsKey(uid) ?
-                                FieldValue.delete() : true);*/
+                String postId = getSnapshots().getSnapshot(position).getId();
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                CollectionReference favoritesCollection = db.collection("favorites_" + uid);
+
+                // Agregar el post a la colección de favoritos directamente
+                addPostToFavorites(post, favoritesCollection, holder, uid);
             });
 
-            // Miniatura de media
+            SharedPreferences sharedPreferences = holder.itemView.getContext().getSharedPreferences("Favorites", Context.MODE_PRIVATE);
+            String postId = getSnapshots().getSnapshot(position).getId();
+            boolean isFavorite = sharedPreferences.getBoolean(postId, false);
+
+            if (isFavorite) {
+                holder.favoritesImageView.setImageResource(R.drawable.star_post2);
+            } else {
+                holder.favoritesImageView.setImageResource(R.drawable.star_post);
+            }
+
+            //para borrar el post
+            String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+            if (post.uid.equals(currentUserId)) {
+                holder.deleteImageView.setVisibility(View.VISIBLE);
+                holder.deleteImageView.setOnClickListener(view -> {
+                    CollectionReference favoritesCollection = FirebaseFirestore.getInstance().collection("favorites_" + currentUserId);
+                    removePost(postId, favoritesCollection, holder);
+                });
+            } else {
+                holder.deleteImageView.setVisibility(View.GONE);
+            }
+
+
+            //miniaturas multimedia
             if (post.mediaUrl != null) {
                 holder.mediaImageView.setVisibility(View.VISIBLE);
                 if ("audio".equals(post.mediaType)) {
@@ -131,35 +166,113 @@ public class HomeFragment extends Fragment {
                 holder.mediaImageView.setVisibility(View.GONE);
             }
 
-            //fecha y hora
-
+            //fecha y hora de los post
             SimpleDateFormat format = new SimpleDateFormat("HH:mm dd/MM/yyyy");
             Calendar calendar = Calendar.getInstance();
             calendar.setTimeInMillis(post.timeStamp);
-
             holder.timeTextView.setText(format.format(calendar.getTime()));
-
-
         }
 
+
         class PostViewHolder extends RecyclerView.ViewHolder {
-            ImageView authorPhotoImageView, likeImageView, mediaImageView, favoritesImageView;
+            ImageView authorPhotoImageView, likeImageView, mediaImageView, favoritesImageView, deleteImageView;
             TextView authorTextView, contentTextView, numLikesTextView, timeTextView;
+
             PostViewHolder(@NonNull View itemView) {
                 super(itemView);
-                authorPhotoImageView =
-                        itemView.findViewById(R.id.photoImageView);
+                authorPhotoImageView = itemView.findViewById(R.id.photoImageView);
                 likeImageView = itemView.findViewById(R.id.likeImageView);
                 mediaImageView = itemView.findViewById(R.id.mediaImage);
                 authorTextView = itemView.findViewById(R.id.authorTextView);
-                contentTextView =
-                        itemView.findViewById(R.id.contentTextView);
-                numLikesTextView =
-                        itemView.findViewById(R.id.numLikesTextView);
-                timeTextView =
-                        itemView.findViewById(R.id.timeTextView);
+                contentTextView = itemView.findViewById(R.id.contentTextView);
+                numLikesTextView = itemView.findViewById(R.id.numLikesTextView);
+                timeTextView = itemView.findViewById(R.id.timeTextView);
                 favoritesImageView = itemView.findViewById(R.id.favoritesImageView);
+                deleteImageView = itemView.findViewById(R.id.deleteImageView);
             }
         }
+
+        private void addPostToFavorites(Post post, CollectionReference favoritesCollection, PostViewHolder holder, String uid) {
+            String postId = getSnapshots().getSnapshot(holder.getAdapterPosition()).getId();
+            DocumentReference postRef = favoritesCollection.document(postId);
+
+            postRef.get().addOnCompleteListener(task -> {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot document = task.getResult();
+                    if (document.exists()) {
+                        //si el post ya está en favoritos, eliminarlo
+                        favoritesCollection.document(postId)
+                                .delete()
+                                .addOnSuccessListener(aVoid -> {
+                                    //cambiar el icono
+                                    holder.favoritesImageView.setImageResource(R.drawable.star_post);
+                                    notifyDataSetChanged();
+                                    //actualizar share preferences
+                                    SharedPreferences sharedPreferences = holder.itemView.getContext().getSharedPreferences("Favorites", Context.MODE_PRIVATE);
+                                    SharedPreferences.Editor editor = sharedPreferences.edit();
+                                    //eliminar post de favoritos
+                                    editor.putBoolean(postId, false);
+                                    editor.apply();
+                                })
+                                .addOnFailureListener(e -> {
+                                });
+                    } else {
+                        //agregar el post a favoritos
+                        postRef.set(post)
+                                .addOnSuccessListener(aVoid -> {
+                                    holder.favoritesImageView.setImageResource(R.drawable.star_post2);
+                                    post.favorites.put(uid, true);
+                                    updatePostInPostsCollection(postId, post);
+                                    notifyDataSetChanged();
+                                    SharedPreferences sharedPreferences = holder.itemView.getContext().getSharedPreferences("Favorites", Context.MODE_PRIVATE);
+                                    SharedPreferences.Editor editor = sharedPreferences.edit();
+                                    editor.putBoolean(postId, true);
+                                    editor.apply();
+                                })
+                                .addOnFailureListener(e -> {
+
+                                });
+                    }
+                } else {
+                }
+            });
+        }
+
+        private void updatePostInPostsCollection(String postId, Post post) {
+            FirebaseFirestore.getInstance().collection("posts")
+                    .document(postId)
+                    .set(post)
+                    .addOnSuccessListener(aVoid -> {
+                    })
+                    .addOnFailureListener(e -> {
+                    });
+        }
+
+
+        //para poder eliminar el post
+        private void removePost(String postId, CollectionReference favoritesCollection, PostViewHolder holder) {
+            //primero cambiamos el sharedpreferences
+            SharedPreferences sharedPreferences = holder.itemView.getContext().getSharedPreferences("Favorites", Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.remove(postId);
+            editor.apply();
+
+            //luego eliminamos el post tanto en la colección posts como en favoritos
+            FirebaseFirestore.getInstance().collection("posts").document(postId).delete()
+                    .addOnSuccessListener(aVoid -> {
+
+                        favoritesCollection.document(postId).delete()
+                                .addOnSuccessListener(aVoid1 -> {
+                                    notifyDataSetChanged();
+                                })
+                                .addOnFailureListener(e -> {
+                                });
+                    })
+                    .addOnFailureListener(e -> {
+                    });
+        }
+
     }
+
+
 }
